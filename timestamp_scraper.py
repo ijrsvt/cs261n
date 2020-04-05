@@ -1,11 +1,16 @@
-from scapy.all import sr1, IP, TCP, RandShort
+from scapy.all import sr1, IP, TCP, ICMP, RandShort, sr
 from collections import defaultdict
 from datetime import datetime
 import pickle
+import subprocess
 
-DESTINATIONS = []
+##########  ALEXA INFO
 ALEXA_TOP_CSV = "top-1m.csv"  #Downloaded 4/3/2020
 ALEXA_TOP_X = 1000
+ALEXA_TOP_URL = "http://s3.amazonaws.com/alexa-static/top-1m.csv.zip"
+##########
+
+DESTINATIONS = []
 NUM_TCP = 100
 NUM_ICMP = 10
 SAVE_NAME = "Result_Dictionary" + str(datetime.now())
@@ -14,9 +19,8 @@ RESULTS = defaultdict(dict)
 
 
 def DownloadAlexa():
-    print(
-        "curl -o topsites.zip http://s3.amazonaws.com/alexa-static/top-1m.csv.zip",
-        "$ unzip topsites.zip")
+    assert(subprocess.run(["curl", "-o", ALEXA_TOP_CSV, ALEXA_TOP_URL]).returncode == 0)
+    assert(subprocess.run(["unzip", ALEXA_TOP_CSV]).returncode == 0)
 
 
 #####   READ IN ALEXA_TOP
@@ -28,26 +32,33 @@ def ReadIn():
 
 
 #####   First Get TCP
-def TcpTimestamp():
-    for dest in DESTINATIONS:
+def TcpTimestamp(inner_destinations):
+    inner_res = defaultdict(dict)
+    for dest in inner_destinations:
         packet = IP(dst=str(dest)) / TCP(
             sport=[RandShort()] * NUM_TCP,
             dport=80,
             flags="S",
-            options=[('Timestamp', (0, 0))],
-            timeout=NUM_TCP)
-        answered, unanswered = sr(packet)
-        RESULTS[dest]['TCP TS'] = answered
+            options=[('Timestamp', (0, 0))])
+        answered, unanswered = sr(packet, timeout=NUM_TCP, verbose=0)
+        inner_res[dest]['TCP TS'] = answered
+    return inner_res
 
 
 #####   Second Get ICMP
-def IcmpTimestamp():
-    for dest in DESTINATIONS:
-        packet = IP(dst=str(dest)) / ICMP()
-        answered, unanswered = sr(
-            IP(dst=["192.168.1.1"] * NUM_ICMP) / ICMP(type=13),
-            timeout=NUM_ICMP)
-        RESULTS[dest]["ICMP Timestamp"] = answered
+def IcmpTimestamp(inner_destinations):
+    inner_res = defaultdict(dict)
+    for dest in inner_destinations:
+        packet = IP(dst=str(dest)) / ICMP(type=13)
+        answered, unanswered = sr(packet, timeout=NUM_ICMP, verbose=0)
+        inner_res[dest]["ICMP Timestamp"] = answered
+    return inner_res
+
+def MergeSecond(original, second):
+    key_set = set(original.keys()).union(set(second.keys()))
+    for key in key_set:
+        original[key].update(second[key])
+    
 
 
 #####   Finally Store Result
@@ -60,6 +71,6 @@ def WriteOut():
 
 if __name__ == "__main__":
     ReadIn()
-    TcpTimestamp()
-    IcmpTimestamp()
+    MergeSecond(RESULTS, TcpTimestamp(DESTINATIONS))
+    MergeSecond(RESULTS, IcmpTimestamp(DESTINATIONS))
     WriteOut()
