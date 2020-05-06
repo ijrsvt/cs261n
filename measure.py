@@ -1,5 +1,6 @@
 import ray
 
+from datetime import datetime
 import schedule
 import requests
 import time
@@ -40,8 +41,8 @@ def collect_all():
     t.start()
     for ip in lst:
         res.append(collect.remote(ip))
-    for r in res:
-        got_res.append(ray.get(r))
+    for r in range(len(res)):
+        got_res[lst[r]] = ray.get(res[r])
     return got_res, t.stop()
 
 

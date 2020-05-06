@@ -141,8 +141,8 @@ def WriteOut():
 
 if __name__ == "__main__":
     ReadIn()
-    # MergeSecond(RESULTS, TcpTimestamp(DESTINATIONS))
+    MergeSecond(RESULTS, TcpTimestamp(DESTINATIONS))
     # MergeSecond(RESULTS, IcmpTimestamp(DESTINATIONS))
-    MergeSecond(RESULTS, TracerouteI(DESTINATIONS))
-    MergeSecond(RESULTS, Traceroute(DESTINATIONS))
+    #MergeSecond(RESULTS, TracerouteI(DESTINATIONS))
+    #MergeSecond(RESULTS, Traceroute(DESTINATIONS))
     WriteOut()
