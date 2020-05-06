@@ -1,9 +1,10 @@
-from scapy.all import sr1, IP, TCP, ICMP, RandShort, sr, AsyncSniffer
+from scapy.all import sr1, IP, TCP, ICMP, RandShort, sr, AsyncSniffer, traceroute
 from collections import defaultdict
 from requests import request
 from datetime import datetime
 import pickle
 import subprocess
+from tqdm import tqdm
 
 ##########  ALEXA INFO
 ALEXA_TOP_CSV = "top-1m.csv"  #Downloaded 4/3/2020
@@ -68,16 +69,44 @@ def MergeSecond(original, second):
         original[key].update(second[key])
 
 
+def Traceroute(inner_destinations):
+    inner_res = defaultdict(dict)
+    for dest in tqdm(inner_destinations):
+        try:
+            res = traceroute(dest, verbose=0)
+            inner_res[dest]['Traceroute TCP'] = res
+        except Exception as e:
+            print("Error with:", dest)
+    return inner_res
+
+def TracerouteI(inner_destinations):
+    inner_res = defaultdict(dict)
+    for dest in tqdm(inner_destinations):
+        try:
+            packet = [IP(dst=str(dest),ttl=x)/ICMP(id=x) for x in range(30)]
+            res = sr(packet, verbose=0, timeout=5)
+            inner_res[dest]['ICMP TCP'] = res
+        except Exception as e:
+            print("Error with:", dest)
+    return inner_res
+
+
 def HttpRequest(inner_destinations):
     inner_res = defaultdict(dict)
-    for dest in inner_destinations:
+    for dest in tqdm(inner_destinations):
         t = AsyncSniffer()
-        t.start()
-        request('GET', "http://" + str(dest))
-        pkts = t.stop()
-        pkts = pkts.filter(
-            lambda pk: TCP in pk.layers() and (pk['TCP'].dport == 80 or pk['TCP'].sport == 80)
-        )
+        try:
+            t.start()
+            request('GET', "http://" + str(dest),timeout=3)
+            pkts = t.stop()
+            pkts = pkts.filter(
+            lambda pk: TCP in pk.layers() and (pk['TCP'].dport == 80 or pk['TCP'].sport == 80))
+        except:
+            try:
+                t.stop()
+            except:
+                pass
+            pkts = []
         inner_res[dest]["HTTP and TCP"] = pkts
     return inner_res
     syn = IP(dst=str(dest)) / TCP(
@@ -114,5 +143,6 @@ if __name__ == "__main__":
     ReadIn()
     # MergeSecond(RESULTS, TcpTimestamp(DESTINATIONS))
     # MergeSecond(RESULTS, IcmpTimestamp(DESTINATIONS))
-    MergeSecond(RESULTS, HttpRequest(DESTINATIONS))
+    MergeSecond(RESULTS, TracerouteI(DESTINATIONS))
+    MergeSecond(RESULTS, Traceroute(DESTINATIONS))
     WriteOut()

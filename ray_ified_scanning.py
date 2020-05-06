@@ -21,11 +21,12 @@ def read_remote(remote, result_dict):
     for r in remote:
         try:
             timestamp_scraper.MergeSecond(result_dict, ray.get(r))
-        except Exception:
+        except Exception as e:
+            print(e)
             pass
 
 if __name__ == '__main__':
-    timestamp_scraper.ALEXA_TOP_X = 10
+    timestamp_scraper.ALEXA_TOP_X = 1000
     timestamp_scraper.NUM_TCP = 100
     timestamp_scraper.NUM_ICMP = 10
     timestamp_scraper.ReadIn()
