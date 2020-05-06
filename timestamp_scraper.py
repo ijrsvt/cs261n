@@ -80,19 +80,21 @@ def HttpRequest(inner_destinations):
         )
         inner_res[dest]["HTTP and TCP"] = pkts
     return inner_res
-    # syn = IP(dst=str(dest)) / TCP(
-    #     sport=RandShort(),
-    #     dport=80,
-    #     flags="S",
-    #     options=[('Timestamp', (0, 0))])
-    # synack = sr1(syn, timeout=1)
-    # ack = IP(dst=str(dest))/TCP(
-    #     sport=synack['TCP'].dport,
-    #     dport=synack['TCP'].sport,
-    #     seq=synack['TCP'].ack,
-    #     ack=synack['TCP'].seq + 1,
-    #     flags='A''P',
-    #     options=[('Timestamp', (0,0))])/Raw(
+    syn = IP(dst=str(dest)) / TCP(
+        sport=RandShort(),
+        dport=8266,
+        flags="S",
+        options=[('Timestamp', (0, 0))])
+    synack = sr1(syn, timeout=1)
+    ack = IP(dst=str(dest))/TCP(
+        sport=synack['TCP'].dport,
+        dport=synack['TCP'].sport,
+        seq=synack['TCP'].ack+1,
+        ack=synack['TCP'].seq + 1,
+        flags='A''P',
+        options=[('MSS', 16344)])
+    ack2 = sr1(ack)
+    #       /Raw(
     #         load='GET / HTTP/1.1\\r\\nHost:
     # {}\\r\\nUser-Agent: python-requests/2.22.0\\r\\n
     # Accept-Encoding: gzip, deflate\\r\\nAccept: */*\\r\\n
