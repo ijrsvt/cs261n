@@ -42,7 +42,7 @@ def TcpTimestamp(inner_destinations):
             sport=[RandShort()] * NUM_TCP,
             dport=80,
             flags="S",
-            options=[('Timestamp', (0, 0))])
+            options=[('MSS', 1460), ('NOP', None), ('WScale', 6), ('NOP', None), ('NOP', None), ('Timestamp', (10, 0)), ('SAckOK', b''), ('EOL', None)])
         answered, unanswered = sr(packet, timeout=NUM_TCP, verbose=0)
         inner_res[dest]['TCP TS'] = answered
     return inner_res
